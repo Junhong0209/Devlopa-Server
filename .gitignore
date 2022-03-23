@@ -1,0 +1,7 @@
+# Database 관련
+my_settings.py
+
+# pycache 폴더
+v1/__pycache__/
+config/__pycache__/
+__pycache__/

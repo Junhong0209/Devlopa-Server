@@ -5,3 +5,6 @@ my_settings.py
 v1/__pycache__/
 config/__pycache__/
 __pycache__/
+
+# .idea 폴더
+.idea/

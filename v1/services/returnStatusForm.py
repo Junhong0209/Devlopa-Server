@@ -7,13 +7,13 @@ def CUSTOM_CODE(status=200, data={}, message='message'):
   return STATUS_FORM
 
 
-def OK_200(data={}):
-  return CUSTOM_CODE(status=200, message='Success', data=data)
+def OK_200(message='Success', data={}):
+  return CUSTOM_CODE(status=200, message=message, data=data)
 
 
-def BAD_REQUEST_400(data={}, message='Bad Request'):
+def BAD_REQUEST_400(message='Bad Request', data={}):
   return CUSTOM_CODE(status=400, message=message, data=data)
 
 
-def INVALID_TOKEN(data={}, message='Invalid token.'):
+def INVALID_TOKEN(message='Invalid token.', data={}):
   return CUSTOM_CODE(status=401, message=message, data=data)

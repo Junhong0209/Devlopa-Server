@@ -1,8 +1,10 @@
 from rest_framework.views import APIView
-from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from rest_framework import status
+from rest_framework.response import Response
 from .services.returnStatusForm import *
+
 import my_settings
 
 
@@ -16,6 +18,22 @@ class DAuthUrl(APIView):
         'DAuthURL': url
       }
     except:
-      return JsonResponse(BAD_REQUEST_400(data={"Something Error."}))
+      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(data={"Something Error."}))
     
-    return JsonResponse(OK_200(data=data))
+    return Response(status=status.HTTP_200_OK, data=OK_200(data=data))
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GetDodamUser(APIView):
+  def post(self, request):
+    try:
+      data = {
+        'code': request.data['code']
+      }
+    except (KeyError, ValueError, TypeError):
+      if TypeError:
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data=CUSTOM_CODE(status=500, data={}, message='값을 가져오는 도중 문제가 생겼습니다.'))
+      else:
+        return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Body에 아무것도 입력하지 않았습니다.'))
+    
+    return Response(status=status.HTTP_200_OK, data=OK_200(message='도담의 유저 정보를 성공적으로 불러와 저장했습니다.'))

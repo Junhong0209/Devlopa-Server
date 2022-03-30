@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'rest_framework.authtoken',
     
     # Custom App V1 (Version 1)
     'v1.apps.V1Config',
@@ -112,6 +113,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 DATABASES = my_settings.DATABASES
+
+
+AUTH_USER_MODEL = 'v1.User'
 
 
 # Password validation

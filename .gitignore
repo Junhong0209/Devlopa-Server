@@ -1,5 +1,5 @@
 # Database 관련
-my_settings.py
+.env
 
 # pycache 폴더
 v1/__pycache__/

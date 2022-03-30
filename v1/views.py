@@ -12,14 +12,17 @@ from .models import *
 from .services.returnStatusForm import *
 
 import requests
-import my_settings
+import os
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DAuthUrl(APIView):
   def get(self, request):
+    DAUTH_ID = os.environ.get('DAUTH_ID')
+    REDIRECT_URL = os.environ.get('REDIRECT_URL')
+    
     try:
-      url = f'http://dauth.b1nd.com/login?client_id={my_settings.DAUTH_ID}&redirect_uri={my_settings.REDIRECT_URL}'
+      url = f'http://dauth.b1nd.com/login?client_id={DAUTH_ID}&redirect_uri={REDIRECT_URL}'
       
       data = {
         'DAuthURL': url
@@ -36,17 +39,17 @@ class GetDodamUser(APIView):
     try:
       body = {
         'code': request.data['code'],
-        'client_id': my_settings.DAUTH_ID,
-        'client_secret': my_settings.DAUTH_SECRET
+        'client_id': os.environ.get('DAUTH_ID'),
+        'client_secret': os.environ.get('DAUTH_SECRET')
       }
     except (KeyError, ValueError, TypeError):
       if TypeError:
-        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data=CUSTOM_CODE(status=500, data={}, message='값을 가져오는 도중 문제가 생겼습니다.'))
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data=CUSTOM_CODE(status=500, message='값을 가져오는 도중 문제가 생겼습니다.'))
       else:
         return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Body에 값이 잘못 입력되었습니다.'))
     
     try:
-      response = requests.post(my_settings.DODAM_TOKEN_API, data=body)
+      response = requests.post(os.environ.get('DODAM_TOKEN_API'), data=body)
       dodam_token = response.json()['access_token']
     except (KeyError, ValueError):
       return Response(status=status.HTTP_400_BAD_REQUEST, data=CUSTOM_CODE(status=400, message='도담 서버 토큰을 가져오지 못했습니다.'))
@@ -55,14 +58,13 @@ class GetDodamUser(APIView):
       header = {
         'Authorization': 'Bearer ' + dodam_token
       }
-      response = requests.get(my_settings.DODAM_USER_API, headers=header)
+      response = requests.get(os.environ.get('DODAM_USER_API'), headers=header)
       user_data = response.json()['data']
     except (KeyError, ValueError):
       return Response(status=status.HTTP_400_BAD_REQUEST, data=CUSTOM_CODE(status=400, message='Some Values missing'))
     
     try:
       userModel = User.object.get(unique_id=user_data['uniqueId'])
-      print(userModel)
     except ObjectDoesNotExist:
       userModel = User.object.create_user(
         username=user_data['name'],

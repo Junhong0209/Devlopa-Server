@@ -11,9 +11,10 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import read_dotenv
 
 import pymysql
-import my_settings
+import os
 
 pymysql.install_as_MySQLdb()
 
@@ -25,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = my_settings.SECRET_KEY
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -112,7 +113,16 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-DATABASES = my_settings.DATABASES
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'Devlopa',
+        'USER': 'root',
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': 'localhost',
+        'PORT': '3306'
+    }
+}
 
 
 AUTH_USER_MODEL = 'v1.User'

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from rest_framework.views import APIView
 
 
 class UserManager(BaseUserManager):
@@ -32,3 +33,9 @@ class User(AbstractUser):
   profile_image = models.CharField(verbose_name='profile_image', db_column='profile_image', max_length=255, null=True)
   
   USERNAME_FIELD = 'unique_id'
+
+
+class Post(APIView):
+  user = models.ForeignKey(User, on_delete=models.CASCADE)
+  pk = models.BigAutoField(verbose_name='pk', db_column='pk', primary_key=True, null=False, unique=True)
+  text = models.TextField(default='', null=False)

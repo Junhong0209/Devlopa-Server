@@ -2,6 +2,7 @@ from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.http.response import HttpResponse
 
 from rest_framework import status
 from rest_framework.views import APIView
@@ -82,3 +83,18 @@ class GetDodamUser(APIView):
       token = Token.objects.get(user=userModel)
     
     return Response(status=status.HTTP_200_OK, data=OK_200(message='도담의 유저 정보를 성공적으로 불러와 저장했습니다.', data={'token': token.key}))
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserPosting(APIView):
+  def post(self, request):
+    try:
+      if not request.user.is_authenticated or request.user.is_anonymous:
+        return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 없습니다.'))
+      else:
+        data = {
+          'body data': request.data['Text'],
+        }
+        return Response(status=status.HTTP_200_OK, data=OK_200(message='이잉', data=data))
+    except (ValueError, TypeError, KeyError):
+      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='안됨 ㅅㄱ ㅋ'))

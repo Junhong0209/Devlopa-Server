@@ -2,7 +2,6 @@ from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.http.response import HttpResponse
 
 from rest_framework import status
 from rest_framework.views import APIView
@@ -85,16 +84,44 @@ class GetDodamUser(APIView):
     return Response(status=status.HTTP_200_OK, data=OK_200(message='도담의 유저 정보를 성공적으로 불러와 저장했습니다.', data={'token': token.key}))
 
 
+# noinspection DuplicatedCode
 @method_decorator(csrf_exempt, name='dispatch')
 class UserPosting(APIView):
   def post(self, request):
     try:
       if not request.user.is_authenticated or request.user.is_anonymous:
-        return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 없습니다.'))
+        return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
       else:
-        data = {
-          'body data': request.data['Text'],
+        posting = Post(
+          user_id=request.user,
+          userName=request.user.username,
+          profileImage=request.user.profile_image,
+          content=request.data['content']
+        )
+        posting.save()
+      return Response(status=status.HTTP_200_OK, data=OK_200(message='글이 성공적으로 저장되었습니다.'))
+    except (KeyError, ValueError):
+      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400())
+    
+  def get(self, request):
+    try:
+      if not request.user.is_authenticated or request.user.is_anonymous:
+        return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
+      
+      data = {'list_count': 0, 'contents': []}
+      posting = Post.objects.all()
+      posting_objects = list(posting.values())
+      for posting_object in posting_objects:
+        posting_data = {
+          'idx': posting_object['primaryKey'],
+          'user_name': posting_object['userName'],
+          'profile_image': posting_object['profileImage'],
+          'content': posting_object['content'],
+          'write_time': posting_object['writeTime']
         }
-        return Response(status=status.HTTP_200_OK, data=OK_200(message='이잉', data=data))
-    except (ValueError, TypeError, KeyError):
-      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='안됨 ㅅㄱ ㅋ'))
+        data['list_count'] += 1
+        data['contents'].append(posting_data)
+      return Response(status=status.HTTP_200_OK, data=OK_200(message='전체 글 조회를 성공했습니다.', data=data))
+      
+    except (KeyError, ValueError):
+      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Some Value missing.'))

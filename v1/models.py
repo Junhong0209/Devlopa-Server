@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from rest_framework.views import APIView
 
@@ -35,7 +36,10 @@ class User(AbstractUser):
   USERNAME_FIELD = 'unique_id'
 
 
-class Post(APIView):
+class Post(models.Model):
   user = models.ForeignKey(User, on_delete=models.CASCADE)
-  pk = models.BigAutoField(verbose_name='pk', db_column='pk', primary_key=True, null=False, unique=True)
-  text = models.TextField(default='', null=False)
+  primaryKey = models.BigAutoField(verbose_name='pk', db_column='pk', primary_key=True, null=False, unique=True)
+  userName = models.CharField(verbose_name='user_name', db_column='user_name', max_length=255, default='')
+  profileImage = models.CharField(verbose_name='profile_image', db_column='profile_image', max_length=255, null=True)
+  content = models.TextField(default='', null=False)
+  writeTime = models.DateField(default=timezone.now())

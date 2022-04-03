@@ -42,4 +42,4 @@ class Post(models.Model):
   userName = models.CharField(verbose_name='user_name', db_column='user_name', max_length=255, default='')
   profileImage = models.CharField(verbose_name='profile_image', db_column='profile_image', max_length=255, null=True)
   content = models.TextField(default='', null=False)
-  writeTime = models.DateField(default=timezone.now())
+  writeTime = models.DateTimeField(default=timezone.now())

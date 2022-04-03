@@ -10,6 +10,7 @@ from rest_framework.authtoken.models import Token
 
 from .models import *
 from .services.returnStatusForm import *
+from .services.returnPostingObject import *
 
 import requests
 import os
@@ -107,20 +108,9 @@ class UserPosting(APIView):
     try:
       if not request.user.is_authenticated or request.user.is_anonymous:
         return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
-      
-      data = {'list_count': 0, 'contents': []}
-      posting = Post.objects.all()
-      posting_objects = list(posting.values())
-      for posting_object in posting_objects:
-        posting_data = {
-          'idx': posting_object['primaryKey'],
-          'user_name': posting_object['userName'],
-          'profile_image': posting_object['profileImage'],
-          'content': posting_object['content'],
-          'write_time': posting_object['writeTime']
-        }
-        data['list_count'] += 1
-        data['contents'].append(posting_data)
+  
+      posting_objects = Post.objects.all()
+      data = PostingObject(posting_objects)
       return Response(status=status.HTTP_200_OK, data=OK_200(message='전체 글 조회를 성공했습니다.', data=data))
       
     except (KeyError, ValueError):

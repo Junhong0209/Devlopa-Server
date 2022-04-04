@@ -4,7 +4,6 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import status
-from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
@@ -85,7 +84,6 @@ class GetDodamUser(APIView):
     return Response(status=status.HTTP_200_OK, data=OK_200(message='도담의 유저 정보를 성공적으로 불러와 저장했습니다.', data={'token': token.key}))
 
 
-# noinspection DuplicatedCode
 @method_decorator(csrf_exempt, name='dispatch')
 class UserPosting(APIView):
   def post(self, request):
@@ -115,3 +113,24 @@ class UserPosting(APIView):
       
     except (KeyError, ValueError):
       return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Some Value missing.'))
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserProfile(APIView):
+  def get(self, request):
+    if not request.user.is_authenticated or request.user.is_anonymous:
+      return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
+    
+    user_profile = {
+      'profile_image': request.user.profile_image,
+      'user_name': request.user.username,
+      'grade': request.user.grade,
+      'room': request.user.room,
+      'number': request.user.number
+    }
+    
+    posting_objects = Post.objects.filter(user_id=request.user)
+    post_data = PostingObject(posting_objects)
+    post_data['user_profile'] = user_profile
+    
+    return Response(status=status.HTTP_200_OK, data=OK_200(message='유저 프로필 조회를 성공했습니다.', data=post_data))

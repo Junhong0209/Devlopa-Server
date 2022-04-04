@@ -1,5 +1,5 @@
 def PostingObject(value):
-  data = {'list_count': 0, 'contents': []}
+  data = {'user_profile': {}, 'list_count': 0, 'contents': []}
 
   posting_objects = value.order_by('writeTime')
   posting_objects = list(posting_objects)

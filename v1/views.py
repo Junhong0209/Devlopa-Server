@@ -4,6 +4,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import status
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
@@ -18,17 +19,17 @@ import os
 @method_decorator(csrf_exempt, name='dispatch')
 class DAuthUrl(APIView):
   def get(self, request):
-    DAUTH_ID = os.environ.get('DAUTH_ID')
-    REDIRECT_URL = os.environ.get('REDIRECT_URL')
-    
     try:
-      url = f'http://dauth.b1nd.com/login?client_id={DAUTH_ID}&redirect_uri={REDIRECT_URL}'
-      
-      data = {
-        'DAuthURL': url
-      }
-    except:
-      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(data={"Something Error."}))
+      DAUTH_ID = os.environ.get('DAUTH_ID')
+      REDIRECT_URL = os.environ.get('REDIRECT_URL')
+    except TypeError:
+      return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data=CUSTOM_CODE(status=500, message='값을 가져오는 도중 문제가 생겼습니다.'))
+    
+    url = f'http://dauth.b1nd.com/login?client_id={DAUTH_ID}&redirect_uri={REDIRECT_URL}'
+    
+    data = {
+      'DAuthURL': url
+    }
     
     return Response(status=status.HTTP_200_OK, data=OK_200(data=data))
 
@@ -37,27 +38,32 @@ class DAuthUrl(APIView):
 class GetDodamUser(APIView):
   def post(self, request):
     try:
-      body = {
-        'code': request.data['code'],
-        'client_id': os.environ.get('DAUTH_ID'),
-        'client_secret': os.environ.get('DAUTH_SECRET')
-      }
+      code = request.data['code']
+      DAUTH_ID = os.environ.get('DAUTH_ID')
+      DAUTH_SECRET = os.environ.get('DAUTH_SECRET')
     except (KeyError, ValueError, TypeError):
       if TypeError:
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data=CUSTOM_CODE(status=500, message='값을 가져오는 도중 문제가 생겼습니다.'))
       else:
-        return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Body에 값이 잘못 입력되었습니다.'))
+        return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Some value is missing.'))
+
+    body = {
+      'code': code,
+      'client_id': DAUTH_ID,
+      'client_secret': DAUTH_SECRET
+    }
     
     try:
       response = requests.post(os.environ.get('DODAM_TOKEN_API'), data=body)
       dodam_token = response.json()['access_token']
     except (KeyError, ValueError):
       return Response(status=status.HTTP_400_BAD_REQUEST, data=CUSTOM_CODE(status=400, message='도담 서버 토큰을 가져오지 못했습니다.'))
+
+    header = {
+      'Authorization': 'Bearer ' + dodam_token
+    }
     
     try:
-      header = {
-        'Authorization': 'Bearer ' + dodam_token
-      }
       response = requests.get(os.environ.get('DODAM_USER_API'), headers=header)
       user_data = response.json()['data']
     except (KeyError, ValueError):
@@ -87,32 +93,45 @@ class GetDodamUser(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class UserPosting(APIView):
   def post(self, request):
+    if not request.user.is_authenticated or request.user.is_anonymous:
+      return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
+
     try:
-      if not request.user.is_authenticated or request.user.is_anonymous:
-        return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
-      else:
-        posting = Post(
-          user_id=request.user,
-          userName=request.user.username,
-          profileImage=request.user.profile_image,
-          content=request.data['content']
-        )
-        posting.save()
-      return Response(status=status.HTTP_200_OK, data=OK_200(message='글이 성공적으로 저장되었습니다.'))
+      content = request.data['content']
     except (KeyError, ValueError):
-      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400())
+      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Some value is missing.'))
+
+    posting = Post(
+      user_id=request.user,
+      userName=request.user.username,
+      profileImage=request.user.profile_image,
+      content=content
+    )
+    posting.save()
     
-  def get(self, request):
-    try:
-      if not request.user.is_authenticated or request.user.is_anonymous:
-        return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
+    return Response(status=status.HTTP_200_OK, data=OK_200(message='글이 성공적으로 저장되었습니다.'))
   
+  def get(self, request):
+    if not request.user.is_authenticated or request.user.is_anonymous:
+      return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
+
+    try:
       posting_objects = Post.objects.all()
       data = PostingObject(posting_objects)
-      return Response(status=status.HTTP_200_OK, data=OK_200(message='전체 글 조회를 성공했습니다.', data=data))
-      
     except (KeyError, ValueError):
-      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Some Value missing.'))
+      return Response(status=status.HTTP_400_BAD_REQUEST, data=BAD_REQUEST_400(message='Some Value is missing.'))
+      
+    return Response(status=status.HTTP_200_OK, data=OK_200(message='전체 글 조회를 성공했습니다.', data=data))
+  
+  def put(self, request):
+    if not request.user.is_authenticated or request.user.is_anonymous:
+      return Response(status=status.HTTP_401_UNAUTHORIZED, data=INVALID_TOKEN(message='토큰이 존재하지 않습니다.'))
+    
+    content = request.data['content']
+    Post.content = content
+    Post.save()
+    
+    return Response(status=status.HTTP_200_OK, data=OK_200(message='글이 성공적으로 수정되었습니다.'))
 
 
 @method_decorator(csrf_exempt, name='dispatch')

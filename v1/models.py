@@ -1,7 +1,6 @@
 from django.db import models
-from django.utils import timezone
+from django.utils.timezone import now
 from django.contrib.auth.models import AbstractUser, BaseUserManager
-from rest_framework.views import APIView
 
 
 class UserManager(BaseUserManager):
@@ -42,4 +41,4 @@ class Post(models.Model):
   userName = models.CharField(verbose_name='user_name', db_column='user_name', max_length=255, default='')
   profileImage = models.CharField(verbose_name='profile_image', db_column='profile_image', max_length=255, null=True)
   content = models.TextField(default='', null=False)
-  writeTime = models.DateTimeField(default=timezone.now())
+  writeTime = models.DateTimeField(default=now, help_text='글 작성 시간')

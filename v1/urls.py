@@ -6,4 +6,5 @@ urlpatterns = [
   path('auth/', views.GetDodamUser.as_view(), name='index'),
   path('posting/', views.UserPosting.as_view(), name='index'),
   path('profile/', views.UserProfile.as_view(), name='index'),
+  path('comment/', views.PostComment.as_view(), name='index'),
 ]

@@ -11,7 +11,6 @@ from rest_framework.authtoken.models import Token
 
 from .models import *
 from .services.returnStatusForm import *
-from .services.returnPostingObject import *
 from .services.returnCommentObject import *
 
 import requests
@@ -68,8 +67,7 @@ class GetDodamUser(APIView):
     }
     
     try:
-      response = requests.post(
-        os.environ.get('DODAM_TOKEN_API'), data=body)
+      response = requests.post(os.environ.get('DODAM_TOKEN_API'), data=body)
       dodam_token = response.json()['access_token']
     except (KeyError, ValueError):
       return Response(
@@ -209,7 +207,37 @@ class UserPosting(APIView):
           'number': request.user.number
         }
     
-        data = PostingObject(posting_objects)
+        data = {'user_profile': {}, 'list_count': 0, 'contents': []}
+
+        posting_objects = posting_objects.order_by('-writeTime')
+        posting_objects = list(posting_objects)
+        for posting_object in posting_objects:
+          if posting_object.user_id == request.user.unique_id:
+            posting_data = {
+              'idx': posting_object.primaryKey,
+              'user_name': posting_object.user.username,
+              'profile_image': posting_object.user.profile_image,
+              'grade': posting_object.user.grade,
+              'room': posting_object.user.room,
+              'number': posting_object.user.number,
+              'my_post': True,
+              'content': posting_object.content,
+              'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S')
+            }
+          else:
+            posting_data = {
+              'idx': posting_object.primaryKey,
+              'user_name': posting_object.user.username,
+              'profile_image': posting_object.user.profile_image,
+              'grade': posting_object.user.grade,
+              'room': posting_object.user.room,
+              'number': posting_object.user.number,
+              'my_post': False,
+              'content': posting_object.content,
+              'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S')
+            }
+          data['list_count'] += 1
+          data['contents'].append(posting_data)
         data['user_profile'] = user_profile
   
         return Response(
@@ -251,7 +279,7 @@ class UserPosting(APIView):
         data=BAD_REQUEST_400(message='Some Values are missing.')
       )
     
-    if post_data.user.unique_id == request.user:
+    if post_data.user.unique_id == request.user.unique_id:
       post_data.content = content
       post_data.save()
   
@@ -326,12 +354,28 @@ class UserProfile(APIView):
     try:
       posting_objects = Post.objects.filter(user_id=request.user)
     
-      post_data = PostingObject(posting_objects)
-      post_data['user_profile'] = user_profile
+      data = {'user_profile': {}, 'list_count': 0, 'contents': []}
+
+      posting_objects = posting_objects.order_by('-writeTime')
+      posting_objects = list(posting_objects)
+      for posting_object in posting_objects:
+        posting_data = {
+          'idx': posting_object.primaryKey,
+          'user_name': posting_object.user.username,
+          'profile_image': posting_object.user.profile_image,
+          'grade': posting_object.user.grade,
+          'room': posting_object.user.room,
+          'number': posting_object.user.number,
+          'content': posting_object.content,
+          'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        data['list_count'] += 1
+        data['contents'].append(posting_data)
+      data['user_profile'] = user_profile
       
       return Response(
         status=status.HTTP_200_OK,
-        data=OK_200(message='유저 프로필 조회를 성공했습니다.', data=post_data)
+        data=OK_200(message='유저 프로필 조회를 성공했습니다.', data=data)
       )
     except ObjectDoesNotExist:
       return Response(
@@ -369,6 +413,7 @@ class PostComment(APIView):
       comment = Comment(
         post_id=post_idx,
         comment=comment_data,
+        user_id=request.user
       )
       comment.save()
       
@@ -403,19 +448,19 @@ class PostComment(APIView):
         data=BAD_REQUEST_400(message='params에 게시글 idx가 존재하지 않습니다.')
       )
     
-    try:
-      comment_objects = Comment.objects.filter(post_id=post_idx)
+    comment_objects = Comment.objects.filter(post_id=post_idx)
+
+    comment_data = CommentObject(comment_objects)
     
-      comment_data = CommentObject(comment_objects)
-      
+    if comment_data['list_count'] != 0:
+      return Response(
+          status=status.HTTP_200_OK,
+          data=OK_200(message='댓글을 성공적으로 불러왔습니다.', data=comment_data)
+        )
+    else:
       return Response(
         status=status.HTTP_200_OK,
-        data=OK_200(message='댓글을 성공적으로 불러왔습니다.', data=comment_data)
-      )
-    except ObjectDoesNotExist:
-      return Response(
-        status=status.HTTP_200_OK,
-        data=OK_200(message='게시글의 댓글이 존재하지 않습니다.')
+        data=OK_200(message='게시글의 댓글이 존재하지 않습니다.', data=comment_data)
       )
   
   def put(self, request):

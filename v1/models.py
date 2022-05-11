@@ -47,6 +47,6 @@ class Post(models.Model):
 class Comment(models.Model):
   primary_key = models.BigAutoField(verbose_name='pk', db_column='pk', primary_key=True, null=False, unique=True)
   post = models.ForeignKey(Post, on_delete=models.CASCADE)
-  user = models.ForeignKey(User, on_delete=models.CASCADE, default='')
+  user = models.ForeignKey(User, on_delete=models.CASCADE)
   comment = models.TextField(default='', null=False)
   write_time = models.DateTimeField(default=now, help_text='댓글 작성 시간')

@@ -11,7 +11,6 @@ from rest_framework.authtoken.models import Token
 
 from .models import *
 from .services.returnStatusForm import *
-from .services.returnCommentObject import *
 
 import requests
 import os
@@ -366,6 +365,7 @@ class UserProfile(APIView):
           'grade': posting_object.user.grade,
           'room': posting_object.user.room,
           'number': posting_object.user.number,
+          'my_post': True,
           'content': posting_object.content,
           'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S')
         }
@@ -450,17 +450,37 @@ class PostComment(APIView):
     
     comment_objects = Comment.objects.filter(post_id=post_idx)
 
-    comment_data = CommentObject(comment_objects)
+    data = {'list_count': 0, 'contents': []}
+
+    comment_objects = comment_objects.order_by('write_time')
+    comment_objects = list(comment_objects)
+    for comment_object in comment_objects:
+      if comment_object.user_id == request.user.unique_id:
+        comment_data = {
+          'idx': comment_object.primary_key,
+          'user_name': comment_object.user.username,
+          'my_comment': True,
+          'content': comment_object.comment,
+        }
+      else:
+        comment_data = {
+          'idx': comment_object.primary_key,
+          'user_name': comment_object.user.username,
+          'my_comment': False,
+          'content': comment_object.comment,
+        }
+      data['list_count'] += 1
+      data['contents'].append(comment_data)
     
-    if comment_data['list_count'] != 0:
+    if data['list_count'] != 0:
       return Response(
           status=status.HTTP_200_OK,
-          data=OK_200(message='댓글을 성공적으로 불러왔습니다.', data=comment_data)
+          data=OK_200(message='댓글을 성공적으로 불러왔습니다.', data=data)
         )
     else:
       return Response(
         status=status.HTTP_200_OK,
-        data=OK_200(message='게시글의 댓글이 존재하지 않습니다.', data=comment_data)
+        data=OK_200(message='게시글의 댓글이 존재하지 않습니다.', data=data)
       )
   
   def put(self, request):
@@ -500,7 +520,7 @@ class PostComment(APIView):
         data=BAD_REQUEST_400(message='존재하지 않는 게시글입니다.')
       )
     
-    if comment_data.user.unique_id == request.user:
+    if comment_data.user.unique_id == request.user.unique_id:
       comment_data['comment'] = comment
       comment_data.save()
       
@@ -543,7 +563,7 @@ class PostComment(APIView):
         data=BAD_REQUEST_400(message='존재하지 않는 댓글입니다.')
       )
     
-    if comment_data.user.unique_id == request.user:
+    if comment_data.user.unique_id == request.user.unique_id:
       comment_data.delete()
       return Response(
         status=status.HTTP_200_OK,
@@ -554,3 +574,37 @@ class PostComment(APIView):
         status=status.HTTP_401_UNAUTHORIZED,
         data=INVALID_TOKEN(message='사용자의 댓글이 아닙니다.')
       )
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CheckAuth(APIView):
+  def get(self, request):
+    try:
+      if not request.user.is_authenticated or request.user.is_anonymous:
+        data = {
+          'verify_token': False
+        }
+        
+        return Response(
+          status=status.HTTP_401_UNAUTHORIZED,
+          data=INVALID_TOKEN(message='토큰이 없거나 위조된 토큰입니다.', data=data)
+        )
+    except AttributeError:
+      data = {
+        'verify_token': False
+      }
+      
+      return Response(
+        status=status.HTTP_401_UNAUTHORIZED,
+        data=INVALID_TOKEN(message='토큰이 없거나 위조된 토큰입니다.', data=data)
+      )
+    
+    data = {
+      'verify_token': True
+    }
+    
+    return Response(
+      status=status.HTTP_200_OK,
+      data=OK_200(message='토큰 확인이 완료되었습니다.', data=data)
+    )
+  

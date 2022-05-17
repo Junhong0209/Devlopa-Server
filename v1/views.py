@@ -11,8 +11,11 @@ from rest_framework.authtoken.models import Token
 
 from .models import *
 from .services.returnStatusForm import *
+from .services.getDodamToken import *
+from .services.getDodamUser import *
+from .services.returnPaginator import *
 
-import requests
+import asyncio
 import os
 
 
@@ -47,17 +50,13 @@ class GetDodamUser(APIView):
       code = request.data['code']
       DAUTH_ID = os.environ.get('DAUTH_ID')
       DAUTH_SECRET = os.environ.get('DAUTH_SECRET')
-    except (KeyError, ValueError, TypeError):
-      if TypeError:
-        return Response(
-          status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-          data=CUSTOM_CODE(status=500, message='값을 가져오는 도중 문제가 생겼습니다.')
-        )
-      else:
-        return Response(
-          status=status.HTTP_400_BAD_REQUEST,
-          data=BAD_REQUEST_400(message='Some Values are missing.')
-        )
+    except (KeyError, ValueError):
+      return Response(
+        status=status.HTTP_400_BAD_REQUEST,
+        data=BAD_REQUEST_400(message='code가 존재하지 않습니다.')
+      )
+
+    loop = asyncio.new_event_loop()
     
     body = {
       'code': code,
@@ -66,27 +65,33 @@ class GetDodamUser(APIView):
     }
     
     try:
-      response = requests.post(os.environ.get('DODAM_TOKEN_API'), data=body)
-      dodam_token = response.json()['access_token']
-    except (KeyError, ValueError):
-      return Response(
-        status=status.HTTP_400_BAD_REQUEST,
-        data=CUSTOM_CODE(status=400, message='도담 서버 토큰을 가져오지 못했습니다.')
-      )
+      dodam_token = loop.run_until_complete(get_dodam_token(body=body))
+      token = dodam_token['access_token']
+    except (KeyError, ValueError, TypeError):
+      if TypeError:
+        return Response(
+          status=status.HTTP_403_FORBIDDEN,
+          data=CUSTOM_CODE(status=403, message='위조된 코드입니다.')
+        )
+      else:
+        return Response(
+          status=status.HTTP_400_BAD_REQUEST,
+          data=CUSTOM_CODE(status=400, message='도담 서버 토큰을 가져오지 못했습니다.')
+        )
     
     header = {
-      'Authorization': 'Bearer ' + dodam_token
+      'Authorization': 'Bearer ' + token
     }
-    
+
     try:
-      response = requests.get(os.environ.get('DODAM_USER_API'), headers=header)
-      user_data = response.json()['data']
+      user_data = loop.run_until_complete(get_dodam_user(header=header))
+      user_data = user_data['data']
     except (KeyError, ValueError):
       return Response(
         status=status.HTTP_400_BAD_REQUEST,
         data=BAD_REQUEST_400(message='Some Values are missing.')
       )
-    
+
     try:
       userModel = User.object.get(unique_id=user_data['uniqueId'])
     except ObjectDoesNotExist:
@@ -99,12 +104,12 @@ class GetDodamUser(APIView):
         profile_image=user_data['profileImage']
       )
       userModel.save()
-    
+
     try:
       token = Token.objects.create(user=userModel)
     except IntegrityError:
       token = Token.objects.get(user=userModel)
-    
+
     return Response(
       status=status.HTTP_200_OK,
       data=OK_200(message='도담의 유저 정보를 성공적으로 불러와 저장했습니다.', data={'token': token.key})
@@ -206,10 +211,11 @@ class UserPosting(APIView):
           'number': request.user.number
         }
     
+        page = int(request.GET.get('page', default='1'))
         data = {'user_profile': {}, 'list_count': 0, 'contents': []}
-
-        posting_objects = posting_objects.order_by('-writeTime')
-        posting_objects = list(posting_objects)
+        content = return_pagiantor(posting_objects, page)
+        
+        posting_objects = list(content)
         for posting_object in posting_objects:
           if posting_object.user_id == request.user.unique_id:
             posting_data = {
@@ -352,11 +358,12 @@ class UserProfile(APIView):
     
     try:
       posting_objects = Post.objects.filter(user_id=request.user)
-    
+      
       data = {'user_profile': {}, 'list_count': 0, 'contents': []}
-
-      posting_objects = posting_objects.order_by('-writeTime')
-      posting_objects = list(posting_objects)
+      page = int(request.GET.get('page', default='1'))
+      content = return_pagiantor(posting_objects, page)
+      
+      posting_objects = list(content)
       for posting_object in posting_objects:
         posting_data = {
           'idx': posting_object.primaryKey,

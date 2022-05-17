@@ -125,11 +125,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('AWS_RDS_NAME'),
-        'USER': os.environ.get('AWS_RDS_USER'),
-        'PASSWORD': os.environ.get('AWS_RDS_PASSWORD'),
-        'HOST': os.environ.get('AWS_RDS_END_POINT'),
-        'PORT': os.environ.get('AWS_RDS_PORT'),
+        'NAME': os.environ.get('LOCAL_DB_NAME'),
+        'USER': os.environ.get('LOCAL_DB_USER'),
+        'PASSWORD': os.environ.get('LOCAL_DB_PASSWORD'),
+        'HOST': os.environ.get('LOCAL_DB_HOST'),
+        'PORT': os.environ.get('LOCAL_DB_PORT'),
         'OPTIONS': {
             'init_command': 'SET sql_mode="STRICT_TRANS_TABLES"'
         }

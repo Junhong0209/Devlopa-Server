@@ -21,4 +21,4 @@ def return_pagiantor(objects, page):
     'page_list': page_list
   }
   
-  return context
+  return context['contents']

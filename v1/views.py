@@ -13,7 +13,6 @@ from .models import *
 from .services.returnStatusForm import *
 from .services.getDodamToken import *
 from .services.getDodamUser import *
-from .services.returnPaginator import *
 
 import asyncio
 import os
@@ -210,13 +209,15 @@ class UserPosting(APIView):
           'room': request.user.room,
           'number': request.user.number
         }
-    
-        page = int(request.GET.get('page', default='1'))
-        data = {'user_profile': {}, 'list_count': 0, 'contents': []}
-        content = return_pagiantor(posting_objects, page)
         
-        posting_objects = list(content)
+        data = {'user_profile': {}, 'list_count': 0, 'comment_count': 0, 'contents': []}
+        posting_objects = list(posting_objects.order_by('-writeTime'))
+
+        data['user_profile'] = user_profile
+        
         for posting_object in posting_objects:
+          comments_objects = Comment.objects.filter(post_id=posting_object.primaryKey)
+          comments_objects = list(comments_objects)
           if posting_object.user_id == request.user.unique_id:
             posting_data = {
               'idx': posting_object.primaryKey,
@@ -227,8 +228,19 @@ class UserPosting(APIView):
               'number': posting_object.user.number,
               'my_post': True,
               'content': posting_object.content,
-              'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S')
+              'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S'),
+              'comment': [],
+              'comment_count': 0
             }
+            for comments_object in comments_objects:
+              comment_data = {
+                'idx': comments_object.primary_key,
+                'user_name': comments_object.user.username,
+                'content': comments_object.comment,
+                'my_comment': True
+              }
+              posting_data['comment_count'] += 1
+              posting_data['comment'].append(comment_data)
           else:
             posting_data = {
               'idx': posting_object.primaryKey,
@@ -239,11 +251,21 @@ class UserPosting(APIView):
               'number': posting_object.user.number,
               'my_post': False,
               'content': posting_object.content,
-              'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S')
+              'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S'),
+              'comment': [],
+              'comment_count': 0
             }
+            for comments_object in comments_objects:
+              comment_data = {
+                'idx': comments_object.primary_key,
+                'user_name': comments_object.user.username,
+                'content': comments_object.comment,
+                'my_comment': False
+              }
+              posting_data['comment_count'] += 1
+              posting_data['comment'].append(comment_data)
           data['list_count'] += 1
           data['contents'].append(posting_data)
-        data['user_profile'] = user_profile
   
         return Response(
           status=status.HTTP_200_OK,
@@ -360,11 +382,11 @@ class UserProfile(APIView):
       posting_objects = Post.objects.filter(user_id=request.user)
       
       data = {'user_profile': {}, 'list_count': 0, 'contents': []}
-      page = int(request.GET.get('page', default='1'))
-      content = return_pagiantor(posting_objects, page)
       
-      posting_objects = list(content)
+      posting_objects = list(posting_objects.order_by('-writeTime'))
       for posting_object in posting_objects:
+        comments_objects = Comment.objects.filter(post_id=posting_object.primaryKey)
+        comments_objects = list(comments_objects)
         posting_data = {
           'idx': posting_object.primaryKey,
           'user_name': posting_object.user.username,
@@ -374,8 +396,19 @@ class UserProfile(APIView):
           'number': posting_object.user.number,
           'my_post': True,
           'content': posting_object.content,
-          'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S')
+          'write_time': posting_object.writeTime.strftime('%Y-%m-%d %H:%M:%S'),
+          'comment': [],
+          'comment_count': 0
         }
+        for comments_object in comments_objects:
+          comment_data = {
+            'idx': comments_object.primary_key,
+            'user_name': comments_object.user.username,
+            'content': comments_object.comment,
+            'my_comment': False
+          }
+          posting_data['comment_count'] += 1
+          posting_data['comment'].append(comment_data)
         data['list_count'] += 1
         data['contents'].append(posting_data)
       data['user_profile'] = user_profile

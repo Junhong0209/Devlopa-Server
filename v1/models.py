@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.timezone import now
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 
 
@@ -32,3 +33,20 @@ class User(AbstractUser):
   profile_image = models.CharField(verbose_name='profile_image', db_column='profile_image', max_length=255, null=True)
   
   USERNAME_FIELD = 'unique_id'
+
+
+class Post(models.Model):
+  user = models.ForeignKey(User, on_delete=models.CASCADE)
+  primaryKey = models.BigAutoField(verbose_name='pk', db_column='pk', primary_key=True, null=False, unique=True)
+  userName = models.CharField(verbose_name='user_name', db_column='user_name', max_length=255, default='')
+  profileImage = models.CharField(verbose_name='profile_image', db_column='profile_image', max_length=255, null=True)
+  content = models.TextField(default='', null=False)
+  writeTime = models.DateTimeField(default=now, help_text='글 작성 시간')
+
+
+class Comment(models.Model):
+  primary_key = models.BigAutoField(verbose_name='pk', db_column='pk', primary_key=True, null=False, unique=True)
+  post = models.ForeignKey(Post, on_delete=models.CASCADE)
+  user = models.ForeignKey(User, on_delete=models.CASCADE)
+  comment = models.TextField(default='', null=False)
+  write_time = models.DateTimeField(default=now, help_text='댓글 작성 시간')

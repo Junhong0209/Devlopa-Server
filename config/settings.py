@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+    'sslserver',
     
     # Custom App V1 (Version 1)
     'v1.apps.V1Config',
